@@ -1,0 +1,378 @@
+---
+title: "At the very beginning of the experiment..."
+author: "Group 2; David, Eamon, Joshua & You Yu"
+date: "Dec 8, 2022"
+output:
+  beamer_presentation:
+    theme: Pittsburgh
+    colortheme: orchid
+    fonttheme: structurebold
+    slide_level: 2
+  pdf_document: default
+subtitle: characteristics of proteins and transcription factors at time t=0.5h
+classoption: aspectratio=169
+fontsize: 11pt
+urlcolor: blue
+---
+
+
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# echo=FALSE will stop the code chunk from appearing in the knit document
+# warning=FALSE and message=FALSE will stop R messages from appearing in the knit document
+install.packages("tidyverse")
+install.packages("rpart")
+install.packages("partykit")
+install.packages("ggplot2")
+install.packages("rlang")
+install.packages("ggpubr")
+install.packages("ggpmisc")
+library(tidyverse)
+library(rpart)
+library(partykit)
+library(knitr)
+library(ggpubr)
+library(ggplot2)
+library(ggpmisc)
+```
+
+## Introduction
+
+The vast data set consists of more than 500 thousand observations from 34 variables. As a whole, it shows the levels of 22 transcription factors and four relevant proteins and how they might change concerning time and different amounts of doses composed by different types of drugs for three repetitions. We are specifically interested in the very start of the experiments. Thus, we picked an exact time spot t=0.5h and tried to draw some interesting conclusions about the relationship of the variables at this time.
+
+# Hypothesis Testing: Will 1uM of "Vem" result in a difference in the mean protein level?
+
+## Hypothesis Testing - Data Summary
+\scriptsize
+```{r, results = "hide", fig.show='hide', message = FALSE}
+finalproject <- read_csv("STA130_Course_Project.csv")
+dataset <- finalproject %>% filter(Timepoint == "0.5 h", dose_id == "1" |
+                                     dose_id == "2", Drugs == "Vem") 
+dataset <- dataset %>% select(NGFR, AXL, Sox10, MiTFg, Doses)
+dataset <- dataset %>% group_by(Doses) 
+```
+Firstly, we filter out the relevant data at t=0.5h and dose_id = "1"(0uM) or "2"(1uM) and drug type = "Vem." Then we select the proteins and doses we are interested in and delete the rest variables as they are irrelevant. Lastly, we group the data set by Doses(1uM or 0uM) for hypothesis testing.
+
+## Hypothesis Testing - Statistical Methods
+$H_0: Mean_{0uM} = Mean_{1uM}$;   $H_1: Mean_{0uM} \neq Mean_{1uM}$
+
+*Null Hypothesis*: There IS NO difference in the mean protein level, regardless of 1uM of the "Vem" drug.
+
+*Alternative Hypothesis*: There IS a difference in the mean protein level with 1uM of the "Vem" drug.
+
+Then we set the number of repetitions to 1000. In each repetition, we randomly assign the doses into two groups using the sample() function. After that, we will calculate the difference in the groups' mean. By comparing them to the original difference in mean, we could obtain the number of occurrences of more extreme cases. Hence, we could also get the p-value by calculating the probability of more extreme cases.
+
+
+## Hypothesis Testing - Results
+
+```{r, echo = FALSE}
+NGFR_dataset <- tibble(dataset %>% select(NGFR, Doses))#Turn into a tibble
+
+#The "original" difference, also the testing value. 
+test_NGFR <- NGFR_dataset %>% group_by(Doses) %>% summarise(means = mean(NGFR), .groups="drop") %>% summarise(mean_diff = diff(means))
+test_NGFR <- as.numeric(test_NGFR)
+
+set.seed(130) #seed set to make it reproducible
+repetitions <- 1000;
+simulated_values <- rep(NA, repetitions)
+
+for(i in 1:repetitions){
+  simdata <- NGFR_dataset %>% mutate(Doses = sample(Doses))
+  #Randomly assign the Doses condition, as the NULL hypothesis states there's no difference.
+
+  sim_value <- simdata %>% group_by(Doses) %>%
+    summarise(means = mean(NGFR), .groups="drop") %>%
+    summarise(mean_diff = diff(means)) 
+  
+  simulated_values[i] <- as.numeric(sim_value)
+  #Obtain the difference for each iteration and store into simulated_values
+}
+NGFR_sim <- tibble(mean_diff = simulated_values)
+#Visualize the distribution of difference in mean
+NGFR_plot <- NGFR_sim %>% ggplot(aes(x=mean_diff)) + geom_histogram(bins=10, color="black",
+                                                  fill="gray") + 
+  labs(x="Difference in mean", y="Occurences", title="Protein type: NGFR", 
+       subtitle="t=0.5h, experiment condition: x1: 0.1uM of Vem / x2: None")
+
+num_more_extreme <- NGFR_sim %>% filter(abs(mean_diff) >= abs(test_NGFR)) %>% summarise(n())
+p_value1 <- as.numeric(num_more_extreme / repetitions) #Probability of more extreme cases than the original test value.
+```
+
+```{r, echo = FALSE}
+AXL_dataset <- tibble(dataset %>% select(AXL, Doses))#Turn into a tibble
+
+#The "original" difference, also the testing value. 
+test_AXL <- AXL_dataset %>% group_by(Doses) %>% summarise(means = mean(AXL), .groups="drop") %>% summarise(mean_diff = diff(means))
+test_AXL <- as.numeric(test_AXL)
+
+set.seed(130) #seed set to make it reproducible
+repetitions <- 1000;
+simulated_values <- rep(NA, repetitions)
+
+for(i in 1:repetitions){
+  simdata <- AXL_dataset %>% mutate(Doses = sample(Doses))
+  #Randomly assign the Doses condition, as the NULL hypothesis states there's no difference.
+
+  sim_value <- simdata %>% group_by(Doses) %>%
+    summarise(means = mean(AXL), .groups="drop") %>%
+    summarise(mean_diff = diff(means)) 
+  
+  simulated_values[i] <- as.numeric(sim_value)
+  #Obtain the difference for each iteration and store into simulated_values
+}
+AXL_sim <- tibble(mean_diff = simulated_values)
+#Visualize the distribution of difference in mean
+AXL_plot <- AXL_sim %>% ggplot(aes(x=mean_diff)) + geom_histogram(bins=10, color="black",
+                                                  fill="gray") + 
+  labs(x="Difference in mean", y="Occurences", title="Protein type: AXL", 
+       subtitle="t=0.5h, experiment condition: x1: 0.1uM of Vem / x2: None")
+
+num_more_extreme <- AXL_sim %>% filter(abs(mean_diff) >= abs(test_AXL)) %>% summarise(n())
+p_value2 <- as.numeric(num_more_extreme / repetitions) #Probability of more extreme cases than the original test value.
+```
+
+```{r, echo = FALSE}
+Sox10_dataset <- tibble(dataset %>% select(Sox10, Doses))#Turn into a tibble
+
+#The "original" difference, also the testing value. 
+test_Sox10 <- Sox10_dataset %>% group_by(Doses) %>% summarise(means = mean(Sox10), .groups="drop") %>% summarise(mean_diff = diff(means))
+test_Sox10 <- as.numeric(test_Sox10)
+
+set.seed(130) #seed set to make it reproducible
+repetitions <- 1000;
+simulated_values <- rep(NA, repetitions)
+
+for(i in 1:repetitions){
+  simdata <- Sox10_dataset %>% mutate(Doses = sample(Doses))
+  #Randomly assign the Doses condition, as the NULL hypothesis states there's no difference.
+
+  sim_value <- simdata %>% group_by(Doses) %>%
+    summarise(means = mean(Sox10), .groups="drop") %>%
+    summarise(mean_diff = diff(means)) 
+  
+  simulated_values[i] <- as.numeric(sim_value)
+  #Obtain the difference for each iteration and store into simulated_values
+}
+Sox10_sim <- tibble(mean_diff = simulated_values)
+#Visualize the distribution of difference in mean
+Sox10_plot <- Sox10_sim %>% ggplot(aes(x=mean_diff)) + geom_histogram(bins=10, color="black",
+                                                  fill="gray") + 
+  labs(x="Difference in mean", y="Occurences", title="Protein type: Sox10", 
+       subtitle="t=0.5h, experiment condition: x1: 0.1uM of Vem / x2: None")
+
+num_more_extreme <- Sox10_sim %>% filter(abs(mean_diff) >= abs(test_Sox10)) %>% summarise(n())
+p_value3 <- as.numeric(num_more_extreme / repetitions) #Probability of more extreme cases than the original test value.
+```
+
+```{r, echo = FALSE}
+MiTFg_dataset <- tibble(dataset %>% select(MiTFg, Doses))#Turn into a tibble
+
+#The "original" difference, also the testing value. 
+test_MiTFg <- MiTFg_dataset %>% group_by(Doses) %>% summarise(means = mean(MiTFg), .groups="drop") %>% summarise(mean_diff = diff(means))
+test_MiTFg <- as.numeric(test_MiTFg)
+
+set.seed(130) #seed set to make it reproducible
+repetitions <- 1000;
+simulated_values <- rep(NA, repetitions)
+
+for(i in 1:repetitions){
+  simdata <- MiTFg_dataset %>% mutate(Doses = sample(Doses))
+  #Randomly assign the Doses condition, as the NULL hypothesis states there's no difference.
+
+  sim_value <- simdata %>% group_by(Doses) %>%
+    summarise(means = mean(MiTFg), .groups="drop") %>%
+    summarise(mean_diff = diff(means)) 
+  
+  simulated_values[i] <- as.numeric(sim_value)
+  #Obtain the difference for each iteration and store into simulated_values
+}
+MiTFg_sim <- tibble(mean_diff = simulated_values)
+#Visualize the distribution of difference in mean
+MiTFg_plot <- MiTFg_sim %>% ggplot(aes(x=mean_diff)) + geom_histogram(bins=10, color="black",
+                                                  fill="gray") + 
+  labs(x="Difference in mean", y="Occurences", title="Protein type: MiTFg", 
+       subtitle="t=0.5h, experiment condition: x1: 0.1uM of Vem / x2: None")
+
+num_more_extreme <- MiTFg_sim %>% filter(abs(mean_diff) >= abs(test_MiTFg)) %>% summarise(n())
+p_value4 <- as.numeric(num_more_extreme / repetitions) #Probability of more extreme cases than the original test value.
+```
+```{r, echo=FALSE}
+protein_names <- tibble("NGFR", "AXL", "Sox10", "MiTFg")
+p_values <- tibble(p_value1,p_value2,p_value3,p_value4)
+test_values <- tibble(test_NGFR, test_AXL, test_Sox10, test_MiTFg)
+image <- tibble(
+  protein_names = c("NGFR", "AXL", "Sox10", "MiTFg"),
+  test_values = c(test_NGFR, test_AXL, test_Sox10, test_MiTFg),
+  p_values = c(p_value1,p_value2,p_value3,p_value4)
+)
+ggarrange(NGFR_plot, AXL_plot, Sox10_plot, MiTFg_plot, ncol = 2, nrow = 3)
+```
+
+## Hypothesis Testing - Results
+
+\begin{center}
+\includegraphics[width=10cm, height=7cm]{p-values.jpg}
+\end{center}
+
+## Hypothesis Testing - Conclusion
+
+From the data above, the p-values are 0.242, 0, 0, and 0, respectively. Therefore, there is extremely strong evidence to reject the NULL hypothesis for the latter three proteins AXL, Sox10, and MiTFg. Furthermore, for the first protein NGFR, the p-value is 0.242, which has no evidence against the NULL hypothesis, so we cannot reject it.
+Therefore, at t=0.5h, the Vem drug's dose of 0.1uM would result in a difference in the mean protein level for the latter three proteins AXL, Sox10, and MiTFg, but not for the first protein NGFR.
+
+
+Limitations: 
+
+1. We only evaluate the difference in mean values to address whether there is a change in the protein level, which could be biased. For example, the distribution could become more skew and have more extreme values with the same mean. 
+
+2. The difference in the type of doses may not be the causation of the mean difference.
+
+
+# Correlation Estimation: What is the relationship between ATF3 and MiTFg at time t=0.5h under the experimental condition 0.1uM of "Vem"?
+
+## Correlation Estimation - Data Summary
+
+1. CSV file is made into a data frame using read_csv
+2. Filtering the observations that do not satisfy time t=0.5 h and experimental
+conditions Drugs == Vem and Doses == 0.1 uM
+3. ATF3 and MiTFg variables selected and stored under ‘main_file’
+
+## Correlation Estimation - Statistical Methods
+
+1. Correlation between ATF3 and MiTFg estimated through bootstrapping
+2. Pseudo-random number generator set up to make the process repeatable
+3. Observations of 'main_file' is sampled with replacement
+4. correlation between AT3 and MiTFg is calculated and stored in the vector 'bootstrap_cor'; the process is repeated 10 000 times
+5. 90% confidence interval derived from 'bootstrap_cor'
+
+## Correlation Estimation - Results
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=3}
+file_content <- read_csv("STA130_Course_Project.csv")
+main_data <- file_content %>% filter(Timepoint == "0.5 h" & Drugs == "Vem" & Doses == "0.1 uM") %>% select(ATF3, MiTFg)
+set.seed(512)
+N <- 10000
+R <- 1000
+bootstrap_cor <- 1:N
+for(i in 1:N){
+  sampled <- slice_sample(main_data, n=R)
+  sampled_atf3 <- sampled$ATF3
+  sampled_mitfg <- sampled$MiTFg
+  bootstrap_cor[i] <- cor(sampled_atf3, sampled_mitfg)
+}
+confidence_interval <- quantile(bootstrap_cor, c(0.05, 0.95))
+boot_cor_tib <- tibble(correlation=bootstrap_cor)
+boot_cor_tib %>% ggplot(aes(x=correlation)) + geom_histogram(bins=40) + ggtitle("Estimation of the Correlation Between ATF3 and MiTFg Through Bootstrapping") + geom_vline(aes(xintercept=0.6131836)) + geom_vline(aes(xintercept=0.6684658))
+print(confidence_interval)
+```
+
+## Correlation Estimation - Conclusion
+
+With 90% confidence, the correlation situates between 0.6131836 and 0.6684658.
+
+
+# Simple Linear Regression: What is the relationship relationship between the cellular phenotypical outcomes and the transcription factors at time t=0.5h?
+
+```{r, include=FALSE}
+#Deselecting the the columns we don't need since we're only focusing
+#on the (Y) and (TF) #%>% filter(Timepoint == "0.5 h")
+dataset <- file_content %>% filter(Timepoint == "0.5 h") %>% select(-Rep, -Doses, -dose_id, -Drugs, -drug_id, -Timepoint, -timepoint_id)
+
+#Getting the average protein level in all TF variables
+dataset %>% mutate(avg.TF = (Phospho_c_Fos + Phospho_c_Jun + Phospho_ATF2 + Phospho_Fra1 + c_Fos + c_Jun + Fra1 + JunD + ATF2 + JunB + Fra2 + ATF4 + Phospho_ATF4 + Phospho_Erk1 + Phospho_ATF1 + ATF6 + Phospho_S6 + ATF3 + ATF5 + Phospho_p38 + Ki_67 + NF_kappaB)/22 ) -> newdataset
+```
+
+
+## Simple Linear Regression - Data Summary & Statistical Methods
+
+We mutate a new variable called avg.TF, which is the mean of the 22 TF factors. Then we apply simple linear regression to avg.TF and the proteins using the "lm" in ggplot to find a relationship between different cellular phenotypical outcomes.
+
+We can also use the summarise() function to describe the y-intercept and slope of the regression line to understand their relation better.
+
+## Simple Linear Regression - Results
+
+```{r, echo=FALSE, message=FALSE}
+graph1 <- newdataset %>% ggplot(aes(x=NGFR, y=avg.TF)) +
+  geom_point() +
+  geom_smooth(method=lm, se=FALSE) +
+  labs(title="Average TF protein levels vs. NGFR",
+       x="NGFR (Y)",
+       y="Average TF Levels", caption="", subtitle= "t=0.5h") + labs(caption="y-intercept: 0.667; gradient: 0.755")
+
+#summary(lm(NGFR~avg.TF, data=newdataset))
+```
+
+```{r, echo=FALSE, message=FALSE}
+graph2 <- newdataset %>% ggplot(aes(x=Sox10, y=avg.TF)) +
+  geom_point() +
+  geom_smooth(method=lm, se=FALSE) +
+  labs(title="Average TF protein levels vs. Sox10",
+    x="Sox10 (Y)",
+    y="Average TF Levels", subtitle= "t=0.5h")+labs(caption="y-intercept: 2.209; gradient: 0.459")
+#summary(lm(Sox10~avg.TF, data=newdataset))
+```
+
+
+```{r, echo=FALSE, message=FALSE}
+graph3 <- newdataset %>% ggplot(aes(x=AXL, y=avg.TF)) +
+  geom_point() +
+  geom_smooth(method=lm, se=FALSE) +
+  labs(title="Average TF protein levels vs. AXL",
+    x="AXL (Y)",
+    y="Average TF Levels", subtitle= "t=0.5h") +labs(caption="y-intercept: 0.512; gradient: 1.003")
+
+#summary(lm(AXL~avg.TF, data=newdataset))
+```
+
+
+```{r, echo=FALSE, message=FALSE}
+graph4 <- newdataset %>% ggplot(aes(x=MiTFg, y=avg.TF)) +
+  geom_point() +
+  geom_smooth(method=lm, se=FALSE) +
+  labs(title="Average TF protein levels vs. MiTFg",
+    x="MiTFg (Y)",
+    y="Average TF Levels", subtitle= "t=0.5h")+labs(caption="y-intercept: 2.109; gradient: 0.555")
+#summary(lm(MiTFg~avg.TF, data=newdataset))
+ggarrange(graph1, graph2, graph3, graph4, ncol = 2, nrow = 3)
+```
+
+## Simple Linear Regression - Conclusion
+
+We could discover the protein levels of the cellular phenotypical outcomes using regression equations. According to regression equations, there is a positive relationship between the protein types and the transcription factors for all of the proteins at time t=0.5h, as they all have a positive gradient for the regression line. Sox10 has the slightest gradient of 0.459, while AXL has the largest, 1.003.
+
+Limitations:
+1. Using the mean values for all of the transcription factors may over generalize the results.
+2. There may be other contributing factors that may affect the causation of the positive relationship.
+
+# Second Approach, Classification: What is the relationship relationship between the cellular phenotypical outcomes and the transcription factors at time t=0.5h?
+
+## Classification - Statistical Methods
+
+To avoid complexity and over-fitting, we will use the same avg.TF value to classify the proteins' level. We'll divide our data set to two separate data sets "train" and "test" using the 80-20 approach, and we will use the "train" data set to fit the model.
+
+## Classification - Results
+
+\includegraphics[width=8cm, height=3.5cm]{NGFR.jpg}
+\includegraphics[width=8cm, height=3.5cm]{AXL.jpg}
+\includegraphics[width=8cm, height=3.5cm]{Sox10.jpg}
+\includegraphics[width=8cm, height=3.5cm]{MiTFg.jpg}
+
+## Classification - Conclusion
+
+From the classification trees, we could understand what approximate values the proteins will have concerning the TF factors. To analyze the Gene types, we could further identify a cutoff and classify the proteins into "High" and "Low" by this cutoff.
+
+The limitations are the same as the simple linear regression part; multivariate classifications should be used if we want to study one specific protein's relation with other proteins. 
+
+## Final Conlusion: What do the results mean?
+
+1. ATF3 has a positive correlation to MiTFg
+2. The higher average transcription factors cause a rise in AXL, MiTFg, NGFR, and Sox10 levels 
+3. Since ATF3 having a positive correlation to MiTFg lines up with the regression testing results, we can verify the connection between the results. 
+4. Therefore, we can establish that an increase in protein levels implies an increase in average transcription factors
+
+## Final Conclusion: What do the results mean?
+
+5. ‘Vem’ causes an increase in the mean difference of the protein levels excluding NGFR
+6. This allows us to point out the contradiction in the ‘Vem’ tests results, in which all the mean protein levels increased, excluding NGFR 
+7. Either NGFR’s correlation to average transcription factors changed, or a new factor in determining the mean protein levels of NGFR is at play
+8. This newly apparent relationship can be used as a guideline for turning deleterious cells into non-deleterious cells.
